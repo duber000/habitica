@@ -721,9 +721,12 @@ api.updateTask = {
  *
  * @apiParam (Path) {String} taskId The task _id or alias
  * @apiParam (Path) {String="up","down"} direction The direction for scoring the task
- * @apiParam (Body) {Object} [charityAct] Charity act details (for todos with charity tracking)
- * @apiParam (Body) {String} [charityAct.description] Description of the act of charity (required if charityAct is provided)
- * @apiParam (Body) {String="volunteer","help","teach","support","donate","other"} [charityAct.category] Category of the act (required if charityAct is provided)
+ * @apiParam (Body) {Object} [charityAct] Charity act details (for todos with
+ * charity tracking)
+ * @apiParam (Body) {String} [charityAct.description] Description of the act of charity
+ * (required if charityAct is provided)
+ * @apiParam (Body) {String="volunteer","help","teach","support","donate","other"}
+ * [charityAct.category] Category of the act (required if charityAct is provided)
  * @apiParam (Body) {Number} [charityAct.duration] Duration in minutes (optional)
  * @apiParam (Body) {String} [charityAct.notes] Additional notes (optional)
  *
@@ -772,7 +775,9 @@ api.scoreTask = {
     const { user } = res.locals;
     const { taskId, direction } = req.params;
     const { charityAct } = req.body;
-    const [taskResponse] = await scoreTasks(user, [{ id: taskId, direction, charityAct }], req, res);
+    const [taskResponse] = await scoreTasks(
+      user, [{ id: taskId, direction, charityAct }], req, res,
+    );
 
     const userStats = user.stats.toJSON();
 
