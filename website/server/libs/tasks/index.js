@@ -405,20 +405,52 @@ async function handleTeamTask (task, delta, direction) {
  *
  * @return Response Data
 */
-async function scoreTask (user, task, direction, req, res) {
+async function scoreTask (user, task, direction, req, res, charityAct) {
+  // Handle charity act tracking for todos with charityGoal
+  const isCharityTodo = task.type === 'todo' && task.charityGoal > 0;
+  let charityGoalMet = false;
+
+  if (isCharityTodo && charityAct && direction === 'up') {
+    // Add the charity act to the task
+    if (!task.charityActs) task.charityActs = [];
+
+    const newAct = {
+      id: shared.uuid(),
+      description: charityAct.description,
+      category: charityAct.category,
+      performedAt: new Date(),
+    };
+
+    if (charityAct.duration) newAct.duration = charityAct.duration;
+    if (charityAct.notes) newAct.notes = charityAct.notes;
+
+    task.charityActs.push(newAct);
+    task.markModified('charityActs');
+
+    // Check if charity goal is met
+    if (task.charityActs.length >= task.charityGoal) {
+      charityGoalMet = true;
+    }
+  }
+
+  // Skip completion check for charity todos that haven't met their goal
+  const skipCompletionCheck = isCharityTodo && direction === 'up' && !charityGoalMet;
+
   if (task.type === 'daily' || task.type === 'todo') {
-    if (task.group.id && task.group.assignedUsersDetail
-      && task.group.assignedUsersDetail[user._id]
-    ) {
-      if (task.group.assignedUsersDetail[user._id].completed && direction === 'up') {
+    if (!skipCompletionCheck) {
+      if (task.group.id && task.group.assignedUsersDetail
+        && task.group.assignedUsersDetail[user._id]
+      ) {
+        if (task.group.assignedUsersDetail[user._id].completed && direction === 'up') {
+          throw new NotAuthorized(res.t('sessionOutdated'));
+        } else if (!task.group.assignedUsersDetail[user._id].completed && direction === 'down') {
+          throw new NotAuthorized(res.t('sessionOutdated'));
+        }
+      } else if (task.completed && direction === 'up') {
         throw new NotAuthorized(res.t('sessionOutdated'));
-      } else if (!task.group.assignedUsersDetail[user._id].completed && direction === 'down') {
+      } else if (!task.completed && direction === 'down') {
         throw new NotAuthorized(res.t('sessionOutdated'));
       }
-    } else if (task.completed && direction === 'up') {
-      throw new NotAuthorized(res.t('sessionOutdated'));
-    } else if (!task.completed && direction === 'down') {
-      throw new NotAuthorized(res.t('sessionOutdated'));
     }
   }
 
@@ -457,7 +489,17 @@ async function scoreTask (user, task, direction, req, res) {
   const firstTask = !user.achievements.completedTask;
   let delta;
 
-  if (rollbackUser) {
+  // For charity todos that haven't met the goal, award points but don't mark complete
+  if (isCharityTodo && direction === 'up' && !charityGoalMet) {
+    // Award points without marking the todo as completed
+    // We still want to give rewards for each act, just not complete the todo yet
+    delta = shared.ops.scoreTask({ task, user, direction }, req, res.analytics);
+    // Revert the completion status set by scoreTask
+    if (task.completed) {
+      task.completed = false;
+      task.dateCompleted = undefined;
+    }
+  } else if (rollbackUser) {
     delta = shared.ops.scoreTask({
       task,
       user: rollbackUser,
@@ -467,6 +509,13 @@ async function scoreTask (user, task, direction, req, res) {
   } else {
     delta = shared.ops.scoreTask({ task, user, direction }, req, res.analytics);
   }
+
+  // Mark charity todo as completed if goal is met
+  if (isCharityTodo && charityGoalMet && !task.completed) {
+    task.completed = true;
+    task.dateCompleted = new Date();
+  }
+
   // Drop system (don't run on the client,
   // as it would only be discarded since ops are sent to the API, not the results)
   if (direction === 'up' && !firstTask) shared.fns.randomDrop(user, { task, delta }, req, res.analytics);
@@ -548,9 +597,22 @@ export async function scoreTasks (user, taskScorings, req, res) {
     throw new BadRequest(apiError('invalidTaskScorings'));
   }
 
-  taskScorings.forEach(({ id, direction }) => {
+  taskScorings.forEach(({ id, direction, charityAct }) => {
     if (!['up', 'down'].includes(direction)) throw new BadRequest(apiError('directionUpDown'));
     if (typeof id !== 'string') throw new BadRequest(apiError('invalidTaskIdentifier'));
+
+    // Validate charity act if provided
+    if (charityAct) {
+      if (!charityAct.description || typeof charityAct.description !== 'string') {
+        throw new BadRequest('Charity act description is required');
+      }
+      if (!charityAct.category || !['volunteer', 'help', 'teach', 'support', 'donate', 'other'].includes(charityAct.category)) {
+        throw new BadRequest('Valid charity act category is required');
+      }
+      if (charityAct.duration && typeof charityAct.duration !== 'number') {
+        throw new BadRequest('Charity act duration must be a number');
+      }
+    }
   });
 
   // Get an array of tasks identifiers
@@ -583,6 +645,7 @@ export async function scoreTasks (user, taskScorings, req, res) {
         taskScoring.direction,
         req,
         res,
+        taskScoring.charityAct,
       ));
     }
   }

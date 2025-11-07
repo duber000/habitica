@@ -50,6 +50,44 @@ const api = {};
  *
  * @apiUse TaskNotFound
  */
+/**
+ * @api {post} /api/v4/tasks/:taskId/score/:direction Score a task
+ * @apiName ScoreTask
+ * @apiGroup Task
+ *
+ * @apiParam (Path) {String} taskId The task _id or alias
+ * @apiParam (Path) {String="up","down"} direction The direction for scoring the task
+ * @apiParam (Body) {Object} [charityAct] Charity act details (for todos with charity tracking)
+ * @apiParam (Body) {String} [charityAct.description] Description of the act of charity (required if charityAct is provided)
+ * @apiParam (Body) {String="volunteer","help","teach","support","donate","other"} [charityAct.category] Category of the act (required if charityAct is provided)
+ * @apiParam (Body) {Number} [charityAct.duration] Duration in minutes (optional)
+ * @apiParam (Body) {String} [charityAct.notes] Additional notes (optional)
+ *
+ * @apiSuccess {Object} data The user stats
+ * @apiSuccess {Object} data._tmp If an item was dropped it'll be returned in te _tmp object
+ * @apiSuccess {Number} data.delta The delta
+ */
+api.scoreTask = {
+  method: 'POST',
+  url: '/tasks/:taskId/score/:direction',
+  middlewares: [authWithHeaders()],
+  async handler (req, res) {
+    const { user } = res.locals;
+    const { taskId, direction } = req.params;
+    const { charityAct } = req.body;
+    const [taskResponse] = await scoreTasks(user, [{ id: taskId, direction, charityAct }], req, res);
+
+    const userStats = user.stats.toJSON();
+
+    const resJsonData = _.assign({
+      delta: taskResponse.delta,
+      _tmp: user._tmp,
+    }, userStats);
+
+    res.respond(200, resJsonData);
+  },
+};
+
 api.scoreTasks = {
   method: 'POST',
   url: '/tasks/bulk-score',

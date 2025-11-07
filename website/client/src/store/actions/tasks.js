@@ -144,8 +144,9 @@ export async function save (store, editedTask) {
   if (originalTask) Object.assign(originalTask, response.data.data);
 }
 
-export async function score (store, { taskId, direction }) {
-  const res = await axios.post(`/api/v4/tasks/${taskId}/score/${direction}`);
+export async function score (store, { taskId, direction, charityAct }) {
+  const body = charityAct ? { charityAct } : {};
+  const res = await axios.post(`/api/v4/tasks/${taskId}/score/${direction}`, body);
   return res;
 }
 

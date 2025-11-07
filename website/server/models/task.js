@@ -411,6 +411,19 @@ export const daily = Task.discriminator('daily', DailySchema);
 export const TodoSchema = new Schema(_.defaults({
   dateCompleted: Date,
   date: Date, // due date for todos
+  // Charity tracking fields
+  charityActs: [{
+    _id: false,
+    id: {
+      $type: String, default: shared.uuid, required: true, validate: [v => validator.isUUID(v), 'Invalid uuid for charity act.'],
+    },
+    description: { $type: String, required: true },
+    category: { $type: String, required: true, enum: ['volunteer', 'help', 'teach', 'support', 'donate', 'other'] },
+    duration: { $type: Number }, // in minutes
+    performedAt: { $type: Date, default: () => new Date() },
+    notes: { $type: String },
+  }],
+  charityGoal: { $type: Number, default: 0 }, // Number of acts needed to complete the todo
 }, dailyTodoSchema()), subDiscriminatorOptions);
 export const todo = Task.discriminator('todo', TodoSchema);
 

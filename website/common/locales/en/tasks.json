@@ -138,5 +138,21 @@
   "pressEnterToAddTag": "Press Enter to add tag: '<%= tagName %>'",
   "taskSummary": "<%= type %> Summary",
   "scoreUp": "Score up",
-  "scoreDown": "Score down"
+  "scoreDown": "Score down",
+  "logCharityAct": "Log Act of Charity",
+  "charityDescriptionPlaceholder": "Describe what you did to help others...",
+  "selectCategory": "Select a category...",
+  "categoryVolunteer": "Volunteer Work",
+  "categoryHelp": "Helped Someone",
+  "categoryTeach": "Teaching/Mentoring",
+  "categorySupport": "Emotional Support",
+  "categoryDonate": "Donation/Contribution",
+  "categoryOther": "Other",
+  "optionalDuration": "Optional",
+  "optionalNotes": "Any additional details...",
+  "additionalNotes": "Additional Notes",
+  "logAct": "Log Act",
+  "minutes": "minutes",
+  "category": "Category",
+  "charityActsCount": "<%= count %> act(s) of charity logged"
 }

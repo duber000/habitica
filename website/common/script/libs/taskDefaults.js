@@ -56,6 +56,13 @@ export default function taskDefaults (task, user) {
     });
   }
 
+  if (task.type === 'todo') {
+    defaults(task, {
+      charityActs: [],
+      charityGoal: 0,
+    });
+  }
+
   if (task.type === 'habit') {
     defaults(task, {
       up: true,

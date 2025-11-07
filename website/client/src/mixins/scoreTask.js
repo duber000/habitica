@@ -34,7 +34,7 @@ export default {
           break;
       }
     },
-    async taskScore (task, direction) {
+    async taskScore (task, direction, charityAct) {
       const { user } = this;
 
       const canScoreTask = await this.beforeTaskScore(task);
@@ -52,6 +52,7 @@ export default {
       const response = await this.$store.dispatch('tasks:score', {
         taskId: task._id,
         direction,
+        charityAct,
       });
 
       this.handleTaskScoreNotifications(response.data.data._tmp || {});

@@ -253,6 +253,12 @@
               ></div>
               <span>{{ formatDueDate() }}</span>
             </div>
+            <div
+              v-if="task.type === 'todo' && task.charityGoal > 0"
+              class="d-flex align-items-center ml-2"
+            >
+              <span>{{ charityProgress }}</span>
+            </div>
             <div class="icons-right d-flex justify-content-end">
               <div
                 v-if="showStreak"
@@ -418,6 +424,9 @@
         :group="group"
       />
     </div>
+    <charity-act-modal
+      @charity-act-submitted="handleCharityActSubmitted"
+    />
   </div>
 </template>
 
@@ -937,11 +946,13 @@ import scoreTask from '@/mixins/scoreTask';
 import sync from '@/mixins/sync';
 import approvalFooter from './approvalFooter';
 import MenuDropdown from '../ui/customMenuDropdown';
+import CharityActModal from './charityActModal';
 
 export default {
   components: {
     approvalFooter,
     MenuDropdown,
+    CharityActModal,
   },
   directives: {
     markdown: markdownDirective,
@@ -962,6 +973,7 @@ export default {
   data () {
     return {
       random: uuid(), // used to avoid conflicts between checkboxes ids
+      pendingScoreDirection: null, // Track direction for charity act scoring
       icons: Object.freeze({
         positive: positiveIcon,
         negative: negativeIcon,
@@ -1006,6 +1018,11 @@ export default {
       const completedItems = this.task.checklist
         .reduce((total, item) => (item.completed ? total + 1 : total), 0);
       return `${completedItems}/${totalItems}`;
+    },
+    charityProgress () {
+      if (this.task.type !== 'todo' || !this.task.charityGoal) return '';
+      const actCount = this.task.charityActs ? this.task.charityActs.length : 0;
+      return `${actCount}/${this.task.charityGoal} acts of charity`;
     },
     leftControl () {
       const { task } = this;
@@ -1203,12 +1220,29 @@ export default {
         this.task.completed = false;
         return;
       }
+
+      // Check if this is a charity todo that needs the modal
+      const isCharityTodo = this.task.type === 'todo' && this.task.charityGoal > 0;
+      if (isCharityTodo && direction === 'up' && !this.task.completed) {
+        // Store the direction and show the modal
+        this.pendingScoreDirection = direction;
+        this.$bvModal.show('charity-act-modal');
+        return;
+      }
+
       if (this.isYesterdaily === true) {
         await this.beforeTaskScore(this.task);
         this.task.completed = !this.task.completed;
         this.playTaskScoreSound(this.task, direction);
       } else {
         this.taskScore(this.task, direction);
+      }
+    },
+    handleCharityActSubmitted (charityAct) {
+      // Score the task with the charity act data
+      if (this.pendingScoreDirection) {
+        this.taskScore(this.task, this.pendingScoreDirection, charityAct);
+        this.pendingScoreDirection = null;
       }
     },
     handleBrokenTask (task) {
